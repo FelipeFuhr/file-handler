@@ -89,12 +89,12 @@ def test_read_dataset_parquet(
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
-def test_read_dataset_cloud(
+def test_read_dataset_aws(
     mock_s3fs_open: Callable,
     tmp_path: Path,
 ):
     """
-    Tests read_dataset from class FileHandler from cloud .
+    Tests read_dataset from class FileHandler from aws .
 
     Parameters
     ----------
@@ -114,6 +114,47 @@ def test_read_dataset_cloud(
     from file_handler import FileHandler
 
     dataset_path_csv = str("s3://" / tmp_path / "dataset.csv")
+    with open(dataset_path_csv, "wb") as fh:
+        iris = datasets.load_iris()
+        dataset = DataFrame(
+            data=c_[iris["data"], iris["target"]],
+            columns=iris["feature_names"] + ["target"],
+        )
+        dataset.to_csv(path_or_buf=fh)
+
+    # Test
+    data_csv = FileHandler.read_dataset(path=dataset_path_csv)
+    assert isinstance(data_csv, DataFrame)
+    assert data_csv.shape[0] != 0
+    assert data_csv.shape[1] != 0
+
+
+@patch("gcsfs.GCSFileSystem.open", side_effect=open)
+def test_read_dataset_gcp(
+    mock_gsfs_open: Callable,
+    tmp_path: Path,
+):
+    """
+    Tests read_dataset from class FileHandler from gcp .
+
+    Parameters
+    ----------
+    tmp_path: Path
+        Artificial path to save and load dataset .
+
+    Returns
+    -------
+    None
+
+    """
+    # Setup
+    from numpy import c_
+    from pandas import DataFrame
+    from sklearn import datasets
+
+    from file_handler import FileHandler
+
+    dataset_path_csv = str("gs://" / tmp_path / "dataset.csv")
     with open(dataset_path_csv, "wb") as fh:
         iris = datasets.load_iris()
         dataset = DataFrame(
@@ -321,12 +362,12 @@ def test_read_yaml(
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
-def test_read_yaml_cloud(
+def test_read_yaml_aws(
     mock_s3fs_open: Callable,
     tmp_path: Path,
 ):
     """
-    Tests read_yaml from class FileHandler with cloud .
+    Tests read_yaml from class FileHandler with aws .
 
     Parameters
     ----------
@@ -343,7 +384,44 @@ def test_read_yaml_cloud(
 
     from file_handler import FileHandler
 
-    data_path = str(tmp_path / "data.yaml")
+    data_path = str("s3://" / tmp_path / "data.yaml")
+    test_dict = {"test1": 1, "test2": "2"}
+    with open(data_path, "w") as fh:
+        dump(test_dict, fh)
+
+    # Test
+    dict_read = FileHandler.read_yaml(path=data_path)
+    assert isinstance(dict_read, dict)
+    assert "test1" in dict_read
+    assert "test2" in dict_read
+    assert dict_read["test1"] == 1
+    assert dict_read["test2"] == "2"
+
+
+@patch("gcsfs.GCSFileSystem.open", side_effect=open)
+def test_read_yaml_gcp(
+    mock_gsfs_open: Callable,
+    tmp_path: Path,
+):
+    """
+    Tests read_yaml from class FileHandler with gcp .
+
+    Parameters
+    ----------
+    tmp_path: Path
+        Artificial path to save and load data .
+
+    Returns
+    -------
+    None
+
+    """
+    # Setup
+    from yaml import dump
+
+    from file_handler import FileHandler
+
+    data_path = str("gs://" / tmp_path / "data.yaml")
     test_dict = {"test1": 1, "test2": "2"}
     with open(data_path, "w") as fh:
         dump(test_dict, fh)
@@ -393,12 +471,12 @@ def test_save_yaml(
 
 
 @patch("s3fs.S3FileSystem.open", side_effect=open)
-def test_save_yaml_cloud(
+def test_save_yaml_aws(
     mock_s3fs_open: Callable,
     tmp_path: Path,
 ):
     """
-    Tests save_yaml from class FileHandler with cloud .
+    Tests save_yaml from class FileHandler with aws .
 
     Parameters
     ----------
@@ -415,11 +493,48 @@ def test_save_yaml_cloud(
 
     from file_handler import FileHandler
 
-    data_path = str(tmp_path / "data.yaml")
+    data_path = str("s3://" / tmp_path / "data.yaml")
     test_dict = {"test1": 1, "test2": "2"}
 
     # Test
-    dict_read = FileHandler.save_yaml(data=test_dict, path="s3://" + data_path)
+    dict_read = FileHandler.save_yaml(data=test_dict, path=data_path)
+    with open(data_path, "r") as fh:
+        dict_read = safe_load(fh)
+    assert isinstance(dict_read, dict)
+    assert "test1" in dict_read
+    assert "test2" in dict_read
+    assert dict_read["test1"] == 1
+    assert dict_read["test2"] == "2"
+
+
+@patch("gcsfs.GCSFileSystem.open", side_effect=open)
+def test_save_yaml_gcp(
+    mock_gsfs_open: Callable,
+    tmp_path: Path,
+):
+    """
+    Tests save_yaml from class FileHandler with gcp .
+
+    Parameters
+    ----------
+    tmp_path: Path
+        Artificial path to save and load yaml .
+
+    Returns
+    -------
+    None
+
+    """
+    # Setup
+    from yaml import safe_load
+
+    from file_handler import FileHandler
+
+    data_path = str("gs://" / tmp_path / "data.yaml")
+    test_dict = {"test1": 1, "test2": "2"}
+
+    # Test
+    dict_read = FileHandler.save_yaml(data=test_dict, path=data_path)
     with open(data_path, "r") as fh:
         dict_read = safe_load(fh)
     assert isinstance(dict_read, dict)

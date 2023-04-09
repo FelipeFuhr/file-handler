@@ -7,6 +7,7 @@ in the cloud .
 from typing import Callable
 
 from s3fs import S3FileSystem
+from gcsfs import GCSFileSystem
 
 
 class Opener:
@@ -46,6 +47,8 @@ class Opener:
         filesystem, stripped_path = Opener.get_filesystem(path)
         if filesystem == "aws":
             return S3FileSystem().open(stripped_path, mode)
+        elif filesystem == "gcp":
+            return GCSFileSystem().open(stripped_path, mode)
         else:
             return open(stripped_path, mode)
 
@@ -69,6 +72,9 @@ class Opener:
         """
         if path.startswith("s3://"):
             filesystem = "aws"
+            path = path[5:]
+        elif path.startswith("gs://"):
+            filesystem = "gcp"
             path = path[5:]
         else:
             filesystem = "local"
